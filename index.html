@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wolf Labs | Homework 01</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        spotify: '#1DB954',
+                        spotifyHover: '#1ed760',
+                        base: '#121212',
+                        surface: '#181818',
+                        surfaceHover: '#282828',
+                        subtext: '#B3B3B3',
+                        error: '#E50914'
+                    },
+                    fontFamily: {
+                        header: ['Montserrat', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body {
+            background-color: #121212;
+            color: #FFFFFF;
+            overflow: hidden; /* Prevent scrolling on body to keep app-like feel */
+            overscroll-behavior-y: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Mobile App Container */
+        .app-container {
+            width: 100%;
+            max-width: 480px; /* Limits width on desktop */
+            margin: 0 auto;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: linear-gradient(135deg, #121212 0%, #0a0a0a 100%);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* Ambient Background Orbs */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+            animation: float 20s infinite ease-in-out alternate;
+        }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(20px, -30px) scale(1.1); }
+        }
+
+        /* Progress Bar */
+        .progress-track { background: #333333; height: 12px; border-radius: 999px; overflow: hidden; flex-grow: 1; }
+        .progress-fill { background: #1DB954; height: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 999px; }
+
+        /* General UI Elements */
+        .glass-panel { background: rgba(24, 24, 24, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; }
+        
+        /* Buttons */
+        .btn-check {
+            background-color: #1DB954; color: #000000; border-radius: 16px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; box-shadow: 0 4px 0 #158a3e;
+        }
+        .btn-check:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+        .btn-check:disabled { background-color: #282828; color: #555555; box-shadow: 0 4px 0 #1e1e1e; cursor: not-allowed; }
+
+        .btn-secondary {
+            background-color: transparent; color: #FFFFFF; border: 2px solid #333; border-radius: 16px; font-weight: 800; font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; box-shadow: 0 4px 0 #1e1e1e;
+        }
+        .btn-secondary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+
+        .opt-btn {
+            background: rgba(255, 255, 255, 0.03); border: 2px solid #333; border-radius: 16px; padding: 16px; font-weight: 600; text-align: left;
+            transition: all 0.2s; color: #fff; display: flex; align-items: center; justify-content: space-between;
+        }
+        .opt-btn.selected { border-color: #1DB954; background: rgba(29, 185, 84, 0.1); color: #1DB954; }
+
+        /* Word Builder */
+        .word-chip {
+            background: #282828; border: 2px solid #333; border-radius: 12px; padding: 12px 20px; font-weight: 600; font-size: 1.1rem;
+            cursor: pointer; box-shadow: 0 4px 0 #1e1e1e; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .word-chip:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+        .drop-zone { min-height: 70px; border-bottom: 2px solid #333; display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; margin-bottom: 24px; align-items: center; }
+
+        /* Animations */
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+
+        /* Bottom Sheet */
+        #bottom-sheet { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Hide Scrollbar but keep functionality */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    
+    <!-- Ambient Background Orbs -->
+    <div class="bg-orb w-[300px] h-[300px] bg-spotify/15 top-[-10%] left-[-10%]"></div>
+    <div class="bg-orb w-[400px] h-[400px] bg-blue-500/10 bottom-[-10%] right-[-20%]" style="animation-delay: -5s;"></div>
+
+    <!-- 1. COVER SCREEN -->
+    <div id="cover-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center text-center px-6 transition-opacity duration-500 bg-[#121212]/90 backdrop-blur-sm">
+        <div class="w-32 h-32 rounded-full bg-surface flex items-center justify-center shadow-[0_15px_40px_rgba(29,185,84,0.3)] border border-spotify/30 relative group mb-8">
+            <div class="absolute inset-0 rounded-full bg-spotify opacity-10 animate-pulse"></div>
+            <i class="fa-solid fa-gamepad text-5xl text-spotify relative z-10"></i>
+        </div>
+        <h2 class="text-xs font-header text-spotify font-bold tracking-[0.3em] mb-3 uppercase"><i class="fa-solid fa-bolt mr-2"></i>Homework 01</h2>
+        <h1 class="text-4xl font-header font-black text-white mb-4 tracking-tight leading-tight">Identity Core</h1>
+        <p class="text-base text-subtext font-body font-medium leading-relaxed mb-12">Complete 20 rapid-fire challenges to lock in your progress.</p>
+        
+        <div class="w-full mt-auto mb-8 flex flex-col gap-4">
+            <div class="flex justify-center gap-3 mb-4">
+                <span class="px-3 py-1 rounded-full bg-black/50 border border-white/10 text-[10px] font-bold text-white/70 uppercase tracking-widest"><i class="fa-solid fa-heart text-error mr-1"></i> 5 Hearts</span>
+                <span class="px-3 py-1 rounded-full bg-black/50 border border-white/10 text-[10px] font-bold text-white/70 uppercase tracking-widest"><i class="fa-solid fa-bolt text-spotify mr-1"></i> +250 XP</span>
+            </div>
+            <button class="btn-check w-full py-4 text-lg" onclick="startHomework()">START MISSION</button>
+        </div>
+    </div>
+
+    <!-- 2. MAIN GAME UI (Hidden initially) -->
+    <div id="game-ui" class="hidden flex-col h-full w-full relative z-10">
+        <!-- Top Header (Progress & Hearts) -->
+        <header class="flex items-center gap-4 px-6 pt-8 pb-4 bg-transparent">
+            <button onclick="location.reload()" class="text-subtext hover:text-white text-xl p-2"><i class="fa-solid fa-xmark"></i></button>
+            <div class="progress-track">
+                <div id="progress-bar" class="progress-fill" style="width: 0%;"></div>
+            </div>
+            <div id="hearts-container" class="flex gap-1 text-error text-xl ml-2 drop-shadow-md">
+                <!-- Hearts injected by JS -->
+            </div>
+        </header>
+
+        <!-- Main Exercise Area -->
+        <main class="flex-grow flex flex-col px-6 py-4 overflow-y-auto scrollbar-hide relative" id="exercise-content">
+            <!-- Exercise injected here -->
+        </main>
+
+        <!-- Footer Area (Check Button) -->
+        <footer class="px-6 pb-8 pt-4 bg-transparent border-t border-white/5 relative">
+            <button id="check-btn" class="btn-check w-full py-4 text-lg" onclick="checkAnswer()" disabled>CHECK</button>
+        </footer>
+    </div>
+
+    <!-- 3. VICTORY SCREEN (Hidden initially) -->
+    <div id="victory-screen" class="absolute inset-0 z-50 hidden flex-col items-center justify-center text-center px-6 bg-[#121212]/95 backdrop-blur-md">
+        <div class="w-32 h-32 rounded-full bg-[rgba(29,185,84,0.1)] border border-spotify/30 flex items-center justify-center mb-6 relative shadow-[0_0_50px_rgba(29,185,84,0.2)]">
+            <div class="absolute inset-0 rounded-full border-2 border-spotify/50 animate-ping"></div>
+            <i class="fa-solid fa-crown text-6xl text-spotify"></i>
+        </div>
+        <h1 class="text-4xl font-header font-black text-white mb-2 tracking-tight">Mission Cleared!</h1>
+        <p class="text-lg text-subtext mb-8 font-medium">Identity Core successfully installed.</p>
+        
+        <div class="glass-panel p-6 w-full mb-10">
+            <p class="text-[10px] text-subtext mb-4 font-bold uppercase tracking-widest flex items-center justify-center"><i class="fa-solid fa-chart-pie mr-2 text-spotify"></i> Rewards Earned</p>
+            <div class="flex justify-between items-center border-b border-white/10 pb-4 mb-4">
+                <span class="text-base font-bold text-white">Fluency (XP)</span> 
+                <span class="text-2xl font-header font-black text-spotify">+250</span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-base font-bold text-white">Hearts Left</span> 
+                <span class="text-2xl font-header font-black text-error" id="final-hearts">5</span>
+            </div>
+        </div>
+        
+        <div class="w-full flex flex-col gap-4 mt-auto mb-8">
+            <button class="btn-secondary w-full py-4 text-sm flex items-center justify-center gap-2 bg-[#181818]" onclick="openVideoModal()">
+                <i class="fa-brands fa-youtube text-[#E50914] text-lg"></i> REVIEW LESSON VIDEO
+            </button>
+            <button class="btn-check w-full py-4 text-lg" onclick="location.reload()">FINISH</button>
+        </div>
+    </div>
+
+    <!-- 4. BOTTOM SHEET FEEDBACK -->
+    <div id="sheet-backdrop" class="absolute inset-0 bg-black/60 z-40 hidden opacity-0 transition-opacity"></div>
+    <div id="bottom-sheet" class="absolute bottom-0 left-0 w-full rounded-t-3xl p-6 pb-10 z-50 transform translate-y-full flex flex-col gap-6">
+        <div class="flex justify-between items-center">
+            <h2 id="sheet-title" class="text-2xl font-header font-black tracking-tight"></h2>
+            <div id="sheet-icon" class="text-4xl"></div>
+        </div>
+        <div id="sheet-msg-container" class="hidden">
+            <p class="text-sm font-bold uppercase tracking-widest opacity-60 mb-1">Correct Answer:</p>
+            <p id="sheet-msg" class="text-lg font-bold"></p>
+        </div>
+        <button id="continue-btn" class="w-full py-4 rounded-xl font-header font-bold text-lg uppercase tracking-wider shadow-[0_4px_0_rgba(0,0,0,0.3)] active:translate-y-1 active:shadow-none transition-all" onclick="nextExercise()">CONTINUE</button>
+    </div>
+
+    <!-- 5. GAME OVER MODAL -->
+    <div id="game-over-modal" class="absolute inset-0 bg-[#121212]/95 backdrop-blur-md z-[60] hidden flex-col items-center justify-center text-center px-6">
+        <div class="w-32 h-32 rounded-full flex items-center justify-center text-6xl mb-8 bg-[#E50914]/10 text-[#E50914] border border-[#E50914]/30">
+            <i class="fa-solid fa-heart-crack"></i>
+        </div>
+        <h1 class="text-4xl font-header font-black mb-4 tracking-tight">Out of Hearts!</h1>
+        <p class="text-lg text-subtext mb-12 font-medium leading-relaxed">Mistakes help us learn. Take a deep breath and try again from the start.</p>
+        <button class="w-full py-4 text-lg font-header font-bold rounded-2xl uppercase tracking-wider bg-[#E50914] text-white shadow-[0_4px_0_#b9000b] active:translate-y-1 active:shadow-none transition-all mt-auto mb-8" onclick="location.reload()">TRY AGAIN</button>
+    </div>
+
+    <!-- 6. YOUTUBE VIDEO MODAL -->
+    <div id="video-modal" class="absolute inset-0 z-[70] hidden bg-black/95 flex-col px-4 py-8">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-sm font-header text-spotify font-bold uppercase tracking-widest"><i class="fa-solid fa-video mr-2"></i> Lesson Review</h2>
+            <button onclick="closeVideoModal()" class="text-white hover:text-spotify text-3xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="w-full relative pt-[56.25%] rounded-xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-black">
+            <iframe id="yt-iframe" class="absolute top-0 left-0 w-full h-full" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        <p class="text-subtext text-center mt-6 text-sm">Reviewing: "Hello, what's your name?" (BBC Learning English)</p>
+    </div>
+
+</div>
+
+<script>
+    /* --- DATA: 20 EXERCISES --- */
+    const exercises = [
+        { type: 'auth', q: "I is Tim.", valid: false }, // 1
+        { type: 'mcq', prompt: "Choose the best response:", q: "Hello, what's your name?", opts: ["I'm fine.", "My name is Sarah.", "Nice to meet you."], ans: 1 }, // 2
+        { type: 'slot', pre: "", opts: ["He", "His", "She"], post: "name is John.", ans: "His" }, // 3
+        { type: 'bug', q: "My name are Tom.", bugIdx: 2, fix: "is" }, // 4
+        { type: 'builder', words: ["meet", "Nice", "you.", "to"], target: "Nice to meet you." }, // 5
+        { type: 'auth', q: "Her name is Sian.", valid: true }, // 6
+        { type: 'mcq', prompt: "Look at John.", q: "___ is my friend.", opts: ["He", "His", "Her"], ans: 0 }, // 7
+        { type: 'slot', pre: "She", opts: ["am", "is", "are"], post: "my friend.", ans: "is" }, // 8
+        { type: 'bug', q: "She name is Anna.", bugIdx: 0, fix: "Her" }, // 9
+        { type: 'builder', words: ["What", "your", "name", "is", "?"], target: "What is your name ?" }, // 10
+        { type: 'auth', q: "He am Paul.", valid: false }, // 11
+        { type: 'mcq', prompt: "Choose the best response:", q: "Nice to meet you.", opts: ["Nice to meet you too.", "I am John.", "Hello."], ans: 0 }, // 12
+        { type: 'slot', pre: "", opts: ["I", "My", "Me"], post: "am a student.", ans: "I" }, // 13
+        { type: 'bug', q: "I is ready.", bugIdx: 1, fix: "am" }, // 14
+        { type: 'builder', words: ["Tim", "I", "am"], target: "I am Tim" }, // 15
+        { type: 'auth', q: "Nice to meet you.", valid: true }, // 16
+        { type: 'mcq', prompt: "How do you say goodbye?", q: "Choose the best option:", opts: ["Hi!", "Hello!", "Goodbye!"], ans: 2 }, // 17
+        { type: 'slot', pre: "", opts: ["Who", "What", "How"], post: "are you?", ans: "How" }, // 18
+        { type: 'bug', q: "He name is Mark.", bugIdx: 0, fix: "His" }, // 19
+        { type: 'builder', words: ["name", "Mark.", "His", "is"], target: "His name is Mark." } // 20
+    ];
+
+    /* --- STATE --- */
+    let currentEx = 0;
+    let maxHearts = 5;
+    let hearts = maxHearts;
+    let userAnswer = null;
+    let isSheetOpen = false;
+
+    // Builder Specific State
+    let builderBank = [];
+    let builderDrop = [];
+
+    /* --- INITIALIZATION --- */
+    window.onload = () => {
+        // App starts on Cover Screen by default (HTML logic)
+    };
+
+    function startHomework() {
+        document.getElementById('cover-screen').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('cover-screen').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('game-ui').classList.add('flex');
+            renderExercise();
+        }, 500);
+    }
+
+    /* --- RENDER LOGIC --- */
+    function renderExercise() {
+        const ex = exercises[currentEx];
+        userAnswer = null;
+        document.getElementById('check-btn').disabled = true;
+        
+        // Progress Bar
+        const progress = (currentEx / exercises.length) * 100;
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+        
+        updateHearts();
+
+        const container = document.getElementById('exercise-content');
+        let html = '';
+
+        if (ex.type === 'auth') {
+            html = `
+                <h2 class="text-sm font-header text-subtext font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-spotify"></i> Is it correct?</h2>
+                <div class="glass-panel p-8 flex items-center justify-center text-3xl font-header font-bold text-center mb-12 shadow-lg min-h-[150px] relative overflow-hidden">
+                    <i class="fa-solid fa-file-shield absolute -right-4 -bottom-4 text-7xl text-white/5"></i>
+                    <span class="relative z-10">"${ex.q}"</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-auto">
+                    <button class="opt-btn justify-center text-xl flex-col gap-2 py-8 bg-black/20 backdrop-blur-sm" onclick="selectAuth(true, this)">
+                        <i class="fa-solid fa-check-circle text-3xl opacity-50"></i> YES
+                    </button>
+                    <button class="opt-btn justify-center text-xl flex-col gap-2 py-8 bg-black/20 backdrop-blur-sm" onclick="selectAuth(false, this)">
+                        <i class="fa-solid fa-times-circle text-3xl opacity-50"></i> NO
+                    </button>
+                </div>
+            `;
+        } else if (ex.type === 'mcq') {
+            html = `
+                <h2 class="text-sm font-header text-subtext font-bold uppercase tracking-widest mb-4 flex items-center gap-2"><i class="fa-solid fa-list-check text-spotify"></i> ${ex.prompt}</h2>
+                <h1 class="text-3xl font-header font-bold mb-10 leading-tight">"${ex.q}"</h1>
+                <div class="flex flex-col gap-4 mt-auto mb-4">
+                    ${ex.opts.map((opt, i) => `
+                        <button class="opt-btn bg-black/20 backdrop-blur-sm" onclick="selectMCQ(${i}, this)">
+                            <span class="text-xl">${opt}</span>
+                            <div class="w-6 h-6 rounded-full border-2 border-[#555] flex items-center justify-center check-ring transition-colors"></div>
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+        } else if (ex.type === 'slot') {
+            html = `
+                <h2 class="text-sm font-header text-subtext font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fa-solid fa-arrows-rotate text-spotify"></i> Tap to change</h2>
+                <div class="glass-panel p-8 text-3xl font-header font-bold leading-relaxed flex items-center justify-center flex-wrap shadow-lg min-h-[150px] relative overflow-hidden">
+                    <i class="fa-solid fa-layer-group absolute -right-4 -bottom-4 text-7xl text-white/5"></i>
+                    <span class="relative z-10 mr-3">${ex.pre}</span>
+                    <button id="slot-btn" class="relative z-10 bg-[rgba(29,185,84,0.1)] border-2 border-spotify text-spotify px-6 py-2 rounded-2xl mx-1 font-bold shadow-[0_4px_0_#158a3e] active:translate-y-1 active:shadow-none transition-all flex items-center gap-3" onclick="cycleSlot()" data-opts="${ex.opts.join(',')}" data-index="0">
+                        ${ex.opts[0]} <i class="fa-solid fa-rotate text-sm opacity-50"></i>
+                    </button>
+                    <span class="relative z-10 ml-3">${ex.post}</span>
+                </div>
+            `;
+            // Auto-select first option for slot
+            userAnswer = ex.opts[0];
+            document.getElementById('check-btn').disabled = false;
+        } else if (ex.type === 'bug') {
+            html = `
+                <h2 class="text-sm font-header text-subtext font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fa-solid fa-bug text-spotify"></i> Find the mistake</h2>
+                <div class="glass-panel p-8 text-4xl font-header font-bold leading-relaxed flex justify-center flex-wrap gap-x-3 gap-y-4 shadow-lg min-h-[150px] relative overflow-hidden">
+                    <i class="fa-solid fa-magnifying-glass absolute -right-4 -bottom-4 text-7xl text-white/5"></i>
+                    ${ex.q.split(' ').map((word, i) => `
+                        <span class="relative z-10 cursor-pointer border-b-2 border-dashed border-[#555] pb-1 transition-all" id="bug-word-${i}" onclick="selectBug(${i}, this)">${word}</span>
+                    `).join('')}
+                </div>
+            `;
+        } else if (ex.type === 'builder') {
+            html = `
+                <h2 class="text-sm font-header text-subtext font-bold uppercase tracking-widest mb-6 flex items-center gap-2"><i class="fa-solid fa-puzzle-piece text-spotify"></i> Construct the sentence</h2>
+                <div class="drop-zone glass-panel bg-black/20 p-4" id="builder-drop"></div>
+                <div class="flex flex-wrap gap-3 justify-center mt-auto mb-4" id="builder-bank"></div>
+            `;
+            // Defer initialization
+            setTimeout(() => initBuilder(ex.words), 0);
+        }
+
+        container.innerHTML = html;
+        
+        // Reset check button color to default (Green)
+        const checkBtn = document.getElementById('check-btn');
+        checkBtn.className = "btn-check w-full py-4 text-lg mt-auto";
+        checkBtn.innerText = "CHECK";
+    }
+
+    /* --- COMPONENT LOGIC --- */
+    function updateHearts() {
+        const container = document.getElementById('hearts-container');
+        let html = '';
+        for (let i = 0; i < maxHearts; i++) {
+            if (i < hearts) {
+                html += '<i class="fa-solid fa-heart fa-beat text-[#E50914] drop-shadow-[0_0_8px_rgba(229,9,20,0.6)]" style="--fa-animation-duration: 2s;"></i>';
+            } else {
+                html += '<i class="fa-regular fa-heart opacity-30 text-white"></i>';
+            }
+        }
+        container.innerHTML = html;
+    }
+
+    function selectAuth(val, btnEl) {
+        userAnswer = val;
+        document.querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected', 'border-spotify', 'text-spotify', 'bg-[rgba(29,185,84,0.1)]'));
+        btnEl.classList.add('selected');
+        document.getElementById('check-btn').disabled = false;
+    }
+
+    function selectMCQ(idx, btnEl) {
+        userAnswer = idx;
+        document.querySelectorAll('.opt-btn').forEach(b => {
+            b.classList.remove('selected', 'border-spotify');
+            b.querySelector('.check-ring').innerHTML = '';
+            b.querySelector('.check-ring').classList.remove('border-transparent', 'bg-spotify');
+        });
+        btnEl.classList.add('selected');
+        const ring = btnEl.querySelector('.check-ring');
+        ring.classList.add('border-transparent', 'bg-spotify');
+        ring.innerHTML = '<i class="fa-solid fa-check text-black text-sm"></i>';
+        document.getElementById('check-btn').disabled = false;
+    }
+
+    function cycleSlot() {
+        const btn = document.getElementById('slot-btn');
+        const opts = btn.getAttribute('data-opts').split(',');
+        let idx = parseInt(btn.getAttribute('data-index'));
+        idx = (idx + 1) % opts.length;
+        btn.setAttribute('data-index', idx);
+        btn.innerHTML = `${opts[idx]} <i class="fa-solid fa-rotate text-sm opacity-50"></i>`;
+        userAnswer = opts[idx];
+    }
+
+    function selectBug(idx, spanEl) {
+        userAnswer = idx;
+        const container = spanEl.parentElement;
+        container.querySelectorAll('span').forEach(s => {
+            s.classList.remove('text-spotify', 'border-spotify', 'scale-110');
+            s.classList.add('border-[#555]');
+        });
+        spanEl.classList.remove('border-[#555]');
+        spanEl.classList.add('text-spotify', 'border-spotify', 'scale-110');
+        document.getElementById('check-btn').disabled = false;
+    }
+
+    function initBuilder(words) {
+        builderBank = [...words].sort(() => Math.random() - 0.5);
+        builderDrop = [];
+        renderBuilder();
+    }
+
+    function renderBuilder() {
+        const dropEl = document.getElementById('builder-drop');
+        const bankEl = document.getElementById('builder-bank');
+        if(!dropEl || !bankEl) return;
+
+        dropEl.innerHTML = builderDrop.map((w, i) => `
+            <div class="word-chip bg-[rgba(29,185,84,0.1)] border-spotify text-spotify shadow-[0_4px_0_#158a3e]" onclick="moveToBank('${w}', ${i})">${w}</div>
+        `).join('');
+
+        bankEl.innerHTML = builderBank.map((w, i) => `
+            <div class="word-chip" onclick="moveToDrop('${w}', ${i})">${w}</div>
+        `).join('');
+
+        userAnswer = builderDrop;
+        
+        const ex = exercises[currentEx];
+        // Enable check if all words are used
+        document.getElementById('check-btn').disabled = builderDrop.length !== ex.words.length;
+    }
+
+    function moveToDrop(word, index) {
+        builderBank.splice(index, 1);
+        builderDrop.push(word);
+        renderBuilder();
+    }
+
+    function moveToBank(word, index) {
+        builderDrop.splice(index, 1);
+        builderBank.push(word);
+        renderBuilder();
+    }
+
+    /* --- VALIDATION & FEEDBACK --- */
+    function checkAnswer() {
+        if (isSheetOpen) return; // Prevent double clicks
+        
+        const ex = exercises[currentEx];
+        let isCorrect = false;
+        let expectedMsg = "";
+
+        switch(ex.type) {
+            case 'auth':
+                isCorrect = (userAnswer === ex.valid);
+                expectedMsg = ex.valid ? "Yes, it is correct." : "No, it is incorrect.";
+                break;
+            case 'mcq':
+                isCorrect = (userAnswer === ex.ans);
+                expectedMsg = ex.opts[ex.ans];
+                break;
+            case 'slot':
+                isCorrect = (userAnswer === ex.ans);
+                expectedMsg = ex.ans;
+                break;
+            case 'bug':
+                isCorrect = (userAnswer === ex.bugIdx);
+                expectedMsg = "Mistake: " + ex.q.split(' ')[ex.bugIdx] + " ➔ " + ex.fix;
+                break;
+            case 'builder':
+                isCorrect = (userAnswer.join(' ') === ex.target);
+                expectedMsg = ex.target;
+                break;
+        }
+
+        if (isCorrect) {
+            showBottomSheet(true);
+        } else {
+            hearts--;
+            updateHearts();
+            document.getElementById('exercise-content').classList.add('animate-shake');
+            setTimeout(() => document.getElementById('exercise-content').classList.remove('animate-shake'), 400);
+            
+            showBottomSheet(false, expectedMsg);
+            
+            if (hearts <= 0) {
+                setTimeout(showGameOver, 1500); // Wait a bit before killing run
+            }
+        }
+    }
+
+    function showBottomSheet(isCorrect, msg = "") {
+        isSheetOpen = true;
+        const sheet = document.getElementById('bottom-sheet');
+        const backdrop = document.getElementById('sheet-backdrop');
+        const title = document.getElementById('sheet-title');
+        const icon = document.getElementById('sheet-icon');
+        const msgContainer = document.getElementById('sheet-msg-container');
+        const msgText = document.getElementById('sheet-msg');
+        const btn = document.getElementById('continue-btn');
+        const checkBtn = document.getElementById('check-btn');
+        
+        checkBtn.disabled = true;
+
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+
+        if (isCorrect) {
+            sheet.className = "absolute bottom-0 left-0 w-full rounded-t-3xl p-6 pb-10 z-50 transform flex flex-col gap-6 transition-transform duration-300 bg-[#1ed760] text-black translate-y-0";
+            title.innerText = "Excellent!";
+            icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            msgContainer.classList.add('hidden');
+            btn.className = "w-full py-4 rounded-xl font-header font-bold text-lg uppercase tracking-wider bg-[#121212] text-white shadow-[0_4px_0_#000] active:translate-y-1 active:shadow-none transition-all";
+        } else {
+            sheet.className = "absolute bottom-0 left-0 w-full rounded-t-3xl p-6 pb-10 z-50 transform flex flex-col gap-6 transition-transform duration-300 bg-[#E50914] text-white translate-y-0";
+            title.innerText = "Incorrect";
+            icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+            msgContainer.classList.remove('hidden');
+            msgText.innerText = msg;
+            btn.className = "w-full py-4 rounded-xl font-header font-bold text-lg uppercase tracking-wider bg-[#121212] text-white shadow-[0_4px_0_#000] active:translate-y-1 active:shadow-none transition-all";
+        }
+    }
+
+    function hideBottomSheet() {
+        const sheet = document.getElementById('bottom-sheet');
+        const backdrop = document.getElementById('sheet-backdrop');
+        
+        sheet.style.transform = "translateY(100%)";
+        backdrop.classList.add('opacity-0');
+        
+        setTimeout(() => {
+            backdrop.classList.add('hidden');
+            isSheetOpen = false;
+        }, 300);
+    }
+
+    function nextExercise() {
+        if (hearts <= 0) return; // Handled by game over
+
+        hideBottomSheet();
+        
+        setTimeout(() => {
+            currentEx++;
+            if (currentEx >= exercises.length) {
+                showVictory();
+            } else {
+                renderExercise();
+            }
+        }, 300);
+    }
+
+    /* --- END SCREENS & MODALS --- */
+    function showGameOver() {
+        const modal = document.getElementById('game-over-modal');
+        document.getElementById('game-ui').classList.add('hidden');
+        document.getElementById('game-ui').classList.remove('flex');
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function showVictory() {
+        const victoryScreen = document.getElementById('victory-screen');
+        document.getElementById('game-ui').classList.add('hidden');
+        document.getElementById('game-ui').classList.remove('flex');
+        
+        document.getElementById('final-hearts').innerText = hearts;
+        
+        victoryScreen.classList.remove('hidden');
+        victoryScreen.classList.add('flex');
+    }
+
+    function openVideoModal() {
+        const modal = document.getElementById('video-modal');
+        const iframe = document.getElementById('yt-iframe');
+        // Setting src triggers load and autoplay
+        iframe.src = "https://www.youtube.com/embed/I_tRSrPru94?autoplay=1&modestbranding=1&rel=0";
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeVideoModal() {
+        const modal = document.getElementById('video-modal');
+        const iframe = document.getElementById('yt-iframe');
+        // Removing src stops the video
+        iframe.src = "";
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+</script>
+</body>
+</html>
